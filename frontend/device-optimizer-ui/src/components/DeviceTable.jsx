@@ -24,7 +24,22 @@ function HealthBadge({ score, band }) {
   );
 }
 
-export default function DeviceTable({ devices, renderActions, emptyMessage }) {
+const recommendationLabel = { RentAgain: 'Rent Again', Repair: 'Repair First', Retire: 'Retire' };
+const recommendationEmoji = { RentAgain: '✅', Repair: '🔧', Retire: '♻️' };
+const recommendationColor = { RentAgain: 'success', Repair: 'warning', Retire: 'danger' };
+
+function RecommendationBadge({ action, reasons }) {
+  if (!action) {
+    return <Badge appearance="tint">—</Badge>;
+  }
+  return (
+    <Badge appearance="tint" color={recommendationColor[action] ?? 'subtle'} title={reasons?.join(' ')}>
+      {recommendationEmoji[action] ?? ''} {recommendationLabel[action] ?? action}
+    </Badge>
+  );
+}
+
+export default function DeviceTable({ devices, renderActions, emptyMessage, showRecommendation }) {
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   if (devices.length === 0) {
@@ -42,6 +57,7 @@ export default function DeviceTable({ devices, renderActions, emptyMessage }) {
             <TableHeaderCell>Status</TableHeaderCell>
             <TableHeaderCell>Repairs</TableHeaderCell>
             <TableHeaderCell>Health</TableHeaderCell>
+            {showRecommendation && <TableHeaderCell>Recommendation</TableHeaderCell>}
             {renderActions && <TableHeaderCell>Actions</TableHeaderCell>}
           </TableRow>
         </TableHeader>
@@ -64,6 +80,11 @@ export default function DeviceTable({ devices, renderActions, emptyMessage }) {
                   <HealthBadge score={device.healthScore} band={device.healthBand} />
                 </button>
               </TableCell>
+              {showRecommendation && (
+                <TableCell>
+                  <RecommendationBadge action={device.recommendation} reasons={device.recommendationReasons} />
+                </TableCell>
+              )}
               {renderActions && <TableCell>{renderActions(device)}</TableCell>}
             </TableRow>
           ))}

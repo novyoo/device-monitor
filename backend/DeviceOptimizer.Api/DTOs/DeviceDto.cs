@@ -13,5 +13,8 @@ namespace DeviceOptimizer.Api.DTOs
 
         public int? HealthScore { get; set; }
         public string? HealthBand { get; set; }
+
+        public string? Recommendation { get; set; }
+        public List<string> RecommendationReasons { get; set; } = new();
     }
 }

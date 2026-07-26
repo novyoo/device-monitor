@@ -10,7 +10,7 @@ export default function App() {
   return (
     <FluentProvider theme={webLightTheme}>
       <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-        <h1>FleetPulse</h1>
+        <h1>PULSLE</h1>
 
         <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value)}>
           <Tab value="fleet">Fleet</Tab>

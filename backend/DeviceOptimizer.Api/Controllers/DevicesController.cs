@@ -26,6 +26,61 @@ namespace DeviceOptimizer.Api.Controllers
             return Ok(dtos);
         }
 
+        [HttpGet("returns")]
+        public async Task<ActionResult<IEnumerable<DeviceDto>>> GetReturnedDevices()
+        {
+            var devices = await _db.Devices
+                .Include(d => d.Tenant)
+                .Where(d => d.Status == DeviceStatus.Returned)
+                .ToListAsync();
+
+            var deviceIds = devices.Select(d => d.Id).ToList();
+            var lifetimeHoursByDevice = await _db.CheckIns
+                .Where(c => deviceIds.Contains(c.DeviceId))
+                .GroupBy(c => c.DeviceId)
+                .Select(g => new { DeviceId = g.Key, TotalHours = g.Sum(c => c.ActiveUseHours) })
+                .ToDictionaryAsync(x => x.DeviceId, x => x.TotalHours);
+
+            var dtos = devices.Select(d =>
+            {
+                var dto = MapToDeviceDto(d);
+
+                var healthReasons = new List<string>();
+                var healthFlags = new List<string>();
+                if (d.LastCheckInAt != null)
+                {
+                    var healthResult = HealthScoreCalculator.Calculate(
+                        d.LastBatteryHealthPercent!.Value,
+                        d.LastDiskWearPercent!.Value,
+                        d.LastDiskErrorCount!.Value,
+                        d.LastSuddenShutdownCount!.Value,
+                        d.LastCrashCount!.Value,
+                        d.LastTemperatureCelsius!.Value,
+                        d.LastRamUsagePercent!.Value,
+                        d.LastDaysSinceOsUpdate!.Value);
+                    healthReasons = healthResult.Reasons;
+                    healthFlags = healthResult.Flags;
+                }
+
+                var lifetimeHours = lifetimeHoursByDevice.TryGetValue(d.Id, out var hours) ? hours : 0;
+
+                var recommendation = RecommendationEngine.Recommend(
+                    dto.HealthScore,
+                    dto.HealthBand,
+                    healthReasons,
+                    healthFlags,
+                    d.PurchaseDate,
+                    d.RepairCount,
+                    lifetimeHours);
+
+                dto.Recommendation = recommendation.Action;
+                dto.RecommendationReasons = recommendation.Reasons;
+                return dto;
+            }).ToList();
+
+            return Ok(dtos);
+        }
+
         [HttpGet("{id}/detail")]
         public async Task<ActionResult<DeviceDetailDto>> GetDeviceDetail(int id)
         {
