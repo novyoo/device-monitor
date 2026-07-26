@@ -36,11 +36,18 @@ namespace DeviceOptimizer.Api.Models
 
         public DevicePersonality Personality { get; set; } = DevicePersonality.Boring;
 
+        public int RamUsageBaselinePercent { get; set; }
+        public bool IsSlowToUpdate { get; set; }
+
         public int? LastBatteryHealthPercent { get; set; }
         public int? LastDiskWearPercent { get; set; }
+        public int? LastDiskErrorCount { get; set; }
         public int? LastCrashCount { get; set; }
+        public int? LastSuddenShutdownCount { get; set; }
         public double? LastTemperatureCelsius { get; set; }
+        public int? LastRamUsagePercent { get; set; }
         public double? LastActiveUseHours { get; set; }
+        public int? LastDaysSinceOsUpdate { get; set; }
         public DateTime? LastCheckInAt { get; set; }
 
         public List<CheckIn> CheckIns { get; set; } = new();

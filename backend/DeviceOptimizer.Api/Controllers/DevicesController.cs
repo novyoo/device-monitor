@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using DeviceOptimizer.Api.Data;
 using DeviceOptimizer.Api.DTOs;
 using DeviceOptimizer.Api.Models;
+using DeviceOptimizer.Api.Services;
 
 namespace DeviceOptimizer.Api.Controllers
 {
@@ -20,28 +21,108 @@ namespace DeviceOptimizer.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAllDevices()
         {
-            var devices = await _db.Devices
-                .Include(d => d.Tenant)
-                .Select(d => new DeviceDto
-                {
-                    Id = d.Id,
-                    TenantName = d.Tenant!.Name,
-                    Model = d.Model,
-                    SerialNumber = d.SerialNumber,
-                    PurchaseDate = d.PurchaseDate,
-                    RepairCount = d.RepairCount,
-                    Status = d.Status.ToString(),
-                    ReturnedAt = d.ReturnedAt,
-                    BatteryHealthPercent = d.LastBatteryHealthPercent,
-                    DiskWearPercent = d.LastDiskWearPercent,
-                    CrashCount = d.LastCrashCount,
-                    TemperatureCelsius = d.LastTemperatureCelsius,
-                    ActiveUseHours = d.LastActiveUseHours,
-                    LastCheckInAt = d.LastCheckInAt
-                })
-                .ToListAsync();
+            var devices = await _db.Devices.Include(d => d.Tenant).ToListAsync();
+            var dtos = devices.Select(MapToDeviceDto).ToList();
+            return Ok(dtos);
+        }
 
-            return Ok(devices);
+        [HttpGet("{id}/detail")]
+        public async Task<ActionResult<DeviceDetailDto>> GetDeviceDetail(int id)
+        {
+            var device = await _db.Devices.Include(d => d.Tenant).FirstOrDefaultAsync(d => d.Id == id);
+            if (device == null) return NotFound();
+
+            var recentCheckIns = await _db.CheckIns
+                .Where(c => c.DeviceId == id)
+                .OrderByDescending(c => c.Timestamp)
+                .Take(30)
+                .ToListAsync();
+            recentCheckIns.Reverse();
+
+            var detail = new DeviceDetailDto
+            {
+                Id = device.Id,
+                TenantName = device.Tenant!.Name,
+                Model = device.Model,
+                SerialNumber = device.SerialNumber,
+                Status = device.Status.ToString(),
+                LastCheckInAt = device.LastCheckInAt,
+                BatteryHealthPercent = device.LastBatteryHealthPercent,
+                DiskWearPercent = device.LastDiskWearPercent,
+                DiskErrorCount = device.LastDiskErrorCount,
+                CrashCount = device.LastCrashCount,
+                SuddenShutdownCount = device.LastSuddenShutdownCount,
+                TemperatureCelsius = device.LastTemperatureCelsius,
+                RamUsagePercent = device.LastRamUsagePercent,
+                ActiveUseHours = device.LastActiveUseHours,
+                DaysSinceOsUpdate = device.LastDaysSinceOsUpdate,
+                History = recentCheckIns.Select(c => new HealthHistoryPointDto
+                {
+                    Timestamp = c.Timestamp,
+                    Score = HealthScoreCalculator.Calculate(
+                        c.BatteryHealthPercent,
+                        c.DiskWearPercent,
+                        c.DiskErrorCount,
+                        c.SuddenShutdownCount,
+                        c.CrashCount,
+                        c.TemperatureCelsius,
+                        c.RamUsagePercent,
+                        c.DaysSinceOsUpdate).Score
+                }).ToList()
+            };
+
+            if (device.LastCheckInAt != null)
+            {
+                var result = HealthScoreCalculator.Calculate(
+                    device.LastBatteryHealthPercent!.Value,
+                    device.LastDiskWearPercent!.Value,
+                    device.LastDiskErrorCount!.Value,
+                    device.LastSuddenShutdownCount!.Value,
+                    device.LastCrashCount!.Value,
+                    device.LastTemperatureCelsius!.Value,
+                    device.LastRamUsagePercent!.Value,
+                    device.LastDaysSinceOsUpdate!.Value);
+
+                detail.HealthScore = result.Score;
+                detail.HealthBand = result.Band;
+                detail.Reasons = result.Reasons;
+                detail.Flags = result.Flags;
+            }
+
+            return Ok(detail);
+        }
+
+        private static DeviceDto MapToDeviceDto(Device d)
+        {
+            var dto = new DeviceDto
+            {
+                Id = d.Id,
+                TenantName = d.Tenant!.Name,
+                Model = d.Model,
+                SerialNumber = d.SerialNumber,
+                PurchaseDate = d.PurchaseDate,
+                RepairCount = d.RepairCount,
+                Status = d.Status.ToString(),
+                ReturnedAt = d.ReturnedAt
+            };
+
+            if (d.LastCheckInAt != null)
+            {
+                var result = HealthScoreCalculator.Calculate(
+                    d.LastBatteryHealthPercent!.Value,
+                    d.LastDiskWearPercent!.Value,
+                    d.LastDiskErrorCount!.Value,
+                    d.LastSuddenShutdownCount!.Value,
+                    d.LastCrashCount!.Value,
+                    d.LastTemperatureCelsius!.Value,
+                    d.LastRamUsagePercent!.Value,
+                    d.LastDaysSinceOsUpdate!.Value);
+
+                dto.HealthScore = result.Score;
+                dto.HealthBand = result.Band;
+            }
+
+            return dto;
         }
 
         [HttpPost("{id}/rent")]

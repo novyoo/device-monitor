@@ -42,6 +42,10 @@ namespace DeviceOptimizer.Api.Data
                 var daysOwned = random.Next(30, 4 * 365);
                 var status = statusPlan[i];
 
+                var isHeavyRamUser = random.NextDouble() < 0.15;
+                var ramUsageBaseline = isHeavyRamUser ? random.Next(85, 99) : random.Next(35, 80);
+                var isSlowToUpdate = random.NextDouble() < 0.1;
+
                 devices.Add(new Device
                 {
                     TenantId = tenant.Id,
@@ -51,7 +55,9 @@ namespace DeviceOptimizer.Api.Data
                     RepairCount = random.Next(0, 4),
                     Status = status,
                     ReturnedAt = DaysAgoIfEverReturned(status, random),
-                    Personality = personalityPlan[i]
+                    Personality = personalityPlan[i],
+                    RamUsageBaselinePercent = ramUsageBaseline,
+                    IsSlowToUpdate = isSlowToUpdate
                 });
             }
 
