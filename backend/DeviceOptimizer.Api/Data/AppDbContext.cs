@@ -18,6 +18,10 @@ namespace DeviceOptimizer.Api.Data
                 .HasConversion<string>();
 
             modelBuilder.Entity<Device>()
+                .Property(d => d.Personality)
+                .HasConversion<string>();
+
+            modelBuilder.Entity<Device>()
                 .HasIndex(d => d.ApiKey)
                 .IsUnique();
 

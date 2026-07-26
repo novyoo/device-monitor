@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using DeviceOptimizer.Api.Data;
+using DeviceOptimizer.Api.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,8 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.AddHostedService<HealthCheckInSimulator>();
 
 builder.Services.AddCors(options =>
 {

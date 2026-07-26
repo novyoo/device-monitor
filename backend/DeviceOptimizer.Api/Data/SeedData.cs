@@ -26,7 +26,14 @@ namespace DeviceOptimizer.Api.Data
             statusPlan.AddRange(Enumerable.Repeat(DeviceStatus.InRepair, 6));
             statusPlan.AddRange(Enumerable.Repeat(DeviceStatus.Retired, 4));
 
+            var personalityPlan = new List<DevicePersonality>();
+            personalityPlan.AddRange(Enumerable.Repeat(DevicePersonality.Boring, 85));
+            personalityPlan.AddRange(Enumerable.Repeat(DevicePersonality.Aging, 10));
+            personalityPlan.AddRange(Enumerable.Repeat(DevicePersonality.TroubleProne, 5));
+
             var random = new Random(42);
+            personalityPlan = personalityPlan.OrderBy(_ => random.Next()).ToList();
+
             var devices = new List<Device>();
 
             for (int i = 0; i < statusPlan.Count; i++)
@@ -43,7 +50,8 @@ namespace DeviceOptimizer.Api.Data
                     PurchaseDate = DateTime.UtcNow.AddDays(-daysOwned),
                     RepairCount = random.Next(0, 4),
                     Status = status,
-                    ReturnedAt = DaysAgoIfEverReturned(status, random)
+                    ReturnedAt = DaysAgoIfEverReturned(status, random),
+                    Personality = personalityPlan[i]
                 });
             }
 

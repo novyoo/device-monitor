@@ -9,6 +9,13 @@ namespace DeviceOptimizer.Api.Models
         Retired
     }
 
+    public enum DevicePersonality
+    {
+        Boring,
+        Aging,
+        TroubleProne
+    }
+
     public class Device
     {
         public int Id { get; set; }
@@ -26,6 +33,15 @@ namespace DeviceOptimizer.Api.Models
 
         public DeviceStatus Status { get; set; } = DeviceStatus.InStock;
         public DateTime? ReturnedAt { get; set; }
+
+        public DevicePersonality Personality { get; set; } = DevicePersonality.Boring;
+
+        public int? LastBatteryHealthPercent { get; set; }
+        public int? LastDiskWearPercent { get; set; }
+        public int? LastCrashCount { get; set; }
+        public double? LastTemperatureCelsius { get; set; }
+        public double? LastActiveUseHours { get; set; }
+        public DateTime? LastCheckInAt { get; set; }
 
         public List<CheckIn> CheckIns { get; set; } = new();
     }
