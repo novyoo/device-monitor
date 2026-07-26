@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Spinner, Card } from '@fluentui/react-components';
 import {
-  getDevices,
+  getReturnedDevices,
   getReturnStats,
   restockDevice,
   repairDevice,
@@ -17,9 +17,9 @@ export default function ReturnsTab() {
 
   function loadData() {
     setLoading(true);
-    Promise.all([getDevices(), getReturnStats()])
-      .then(([allDevices, returnStats]) => {
-        setDevices(allDevices.filter((device) => device.status === 'Returned'));
+    Promise.all([getReturnedDevices(), getReturnStats()])
+      .then(([returnedDevices, returnStats]) => {
+        setDevices(returnedDevices);
         setStats(returnStats);
       })
       .catch((err) => setError(err.message))
@@ -38,10 +38,17 @@ export default function ReturnsTab() {
     }
   }
 
+  function actionAppearance(device, action) {
+    return device.recommendation === action ? 'primary' : 'outline';
+  }
+
   return (
     <div>
       <h2>Returns Inbox</h2>
-      <p>Devices returned by customers, awaiting a decision.</p>
+      <p>
+        Devices returned by customers, awaiting a decision. The highlighted button is the
+        system's recommendation — click it to accept, or click a different one to override.
+      </p>
 
       {stats && (
         <Card style={{ padding: '12px', marginBottom: '16px', maxWidth: '420px' }}>
@@ -58,15 +65,28 @@ export default function ReturnsTab() {
         <DeviceTable
           devices={devices}
           emptyMessage="No devices are currently awaiting a decision."
+          showRecommendation
           renderActions={(device) => (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Button size="small" onClick={() => handleAction(restockDevice, device.id)}>
+              <Button
+                size="small"
+                appearance={actionAppearance(device, 'RentAgain')}
+                onClick={() => handleAction(restockDevice, device.id)}
+              >
                 Rent Again
               </Button>
-              <Button size="small" onClick={() => handleAction(repairDevice, device.id)}>
+              <Button
+                size="small"
+                appearance={actionAppearance(device, 'Repair')}
+                onClick={() => handleAction(repairDevice, device.id)}
+              >
                 Repair First
               </Button>
-              <Button size="small" appearance="outline" onClick={() => handleAction(retireDevice, device.id)}>
+              <Button
+                size="small"
+                appearance={actionAppearance(device, 'Retire')}
+                onClick={() => handleAction(retireDevice, device.id)}
+              >
                 Retire
               </Button>
             </div>

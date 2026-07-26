@@ -8,6 +8,14 @@ export async function getDevices() {
   return response.json();
 }
 
+export async function getReturnedDevices() {
+  const response = await fetch(`${API_BASE}/devices/returns`);
+  if (!response.ok) {
+    throw new Error(`Failed to load returned devices: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function getReturnStats() {
   const response = await fetch(`${API_BASE}/devices/returns/stats`);
   if (!response.ok) {
