@@ -16,6 +16,14 @@ export async function getReturnStats() {
   return response.json();
 }
 
+export async function getDeviceDetail(id) {
+  const response = await fetch(`${API_BASE}/devices/${id}/detail`);
+  if (!response.ok) {
+    throw new Error(`Failed to load device detail: ${response.status}`);
+  }
+  return response.json();
+}
+
 async function postAction(path) {
   const response = await fetch(`${API_BASE}${path}`, { method: 'POST' });
   if (!response.ok) {

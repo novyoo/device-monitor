@@ -109,14 +109,33 @@ namespace DeviceOptimizer.Api.BackgroundServices
                 ? NextDouble(2, 9)
                 : NextDouble(0, 1);
 
+            var diskErrorChance = Math.Clamp(0.02 + newDisk * 0.006, 0, 0.9);
+            var maxDiskErrorsWhenTriggered = newDisk >= 70 ? 10 : newDisk >= 40 ? 5 : 2;
+            var diskErrorCount = _random.NextDouble() < diskErrorChance ? _random.Next(1, maxDiskErrorsWhenTriggered + 1) : 0;
+
+            var shutdownBaseChance = device.Personality == DevicePersonality.TroubleProne ? 0.04 : 0.01;
+            var shutdownChance = Math.Clamp(shutdownBaseChance + wear * 0.0035, 0, 0.6);
+            var maxShutdownsWhenTriggered = device.Personality == DevicePersonality.TroubleProne ? 5 : 2;
+            var suddenShutdownCount = _random.NextDouble() < shutdownChance ? _random.Next(1, maxShutdownsWhenTriggered + 1) : 0;
+
+            var ramUsagePercent = (int)Math.Round(Math.Clamp(device.RamUsageBaselinePercent + NextDouble(-4, 4), 0, 100));
+
+            var previousDaysSinceUpdate = device.LastDaysSinceOsUpdate ?? 0;
+            var updateResetChance = device.IsSlowToUpdate ? 0.005 : 0.05;
+            var daysSinceOsUpdate = _random.NextDouble() < updateResetChance ? 0 : previousDaysSinceUpdate + 1;
+
             return new CheckInDto
             {
                 ApiKey = device.ApiKey,
                 BatteryHealthPercent = (int)Math.Round(newBattery),
                 DiskWearPercent = (int)Math.Round(newDisk),
+                DiskErrorCount = diskErrorCount,
                 CrashCount = crashCount,
+                SuddenShutdownCount = suddenShutdownCount,
                 TemperatureCelsius = Math.Round(temperature, 1),
-                ActiveUseHours = Math.Round(activeUseHours, 1)
+                RamUsagePercent = ramUsagePercent,
+                ActiveUseHours = Math.Round(activeUseHours, 1),
+                DaysSinceOsUpdate = daysSinceOsUpdate
             };
         }
 
