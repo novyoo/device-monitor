@@ -8,15 +8,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  function loadDevices() {
-    setLoading(true);
+  function loadDevices(showSpinner) {
+    if (showSpinner) setLoading(true);
     getDevices()
       .then(setDevices)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }
 
-  useEffect(loadDevices, []);
+  useEffect(() => {
+    loadDevices(true);
+    const interval = setInterval(() => loadDevices(false), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function handleAction(action, id) {
     setError(null);

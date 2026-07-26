@@ -31,7 +31,13 @@ namespace DeviceOptimizer.Api.Controllers
                     PurchaseDate = d.PurchaseDate,
                     RepairCount = d.RepairCount,
                     Status = d.Status.ToString(),
-                    ReturnedAt = d.ReturnedAt
+                    ReturnedAt = d.ReturnedAt,
+                    BatteryHealthPercent = d.LastBatteryHealthPercent,
+                    DiskWearPercent = d.LastDiskWearPercent,
+                    CrashCount = d.LastCrashCount,
+                    TemperatureCelsius = d.LastTemperatureCelsius,
+                    ActiveUseHours = d.LastActiveUseHours,
+                    LastCheckInAt = d.LastCheckInAt
                 })
                 .ToListAsync();
 
