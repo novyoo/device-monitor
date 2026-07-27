@@ -6,7 +6,8 @@ namespace DeviceOptimizer.Api.Models
         Rented,
         Returned,
         InRepair,
-        Retired
+        Retired,
+        Resale
     }
 
     public enum DevicePersonality
