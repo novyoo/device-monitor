@@ -3,7 +3,7 @@ import { Button, Spinner } from '@fluentui/react-components';
 import { getDevices, rentDevice, returnDevice } from '../api/deviceApi';
 import DeviceTable from './DeviceTable';
 
-export default function Dashboard() {
+export default function Dashboard({ isAdmin }) {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,23 +42,27 @@ export default function Dashboard() {
       {!loading && !error && (
         <DeviceTable
           devices={devices}
-          renderActions={(device) => {
-            if (device.status === 'InStock') {
-              return (
-                <Button size="small" onClick={() => handleAction(rentDevice, device.id)}>
-                  Rent Out
-                </Button>
-              );
-            }
-            if (device.status === 'Rented') {
-              return (
-                <Button size="small" onClick={() => handleAction(returnDevice, device.id)}>
-                  Return
-                </Button>
-              );
-            }
-            return null;
-          }}
+          renderActions={
+            isAdmin
+              ? (device) => {
+                  if (device.status === 'InStock') {
+                    return (
+                      <Button size="small" onClick={() => handleAction(rentDevice, device.id)}>
+                        Rent Out
+                      </Button>
+                    );
+                  }
+                  if (device.status === 'Rented') {
+                    return (
+                      <Button size="small" onClick={() => handleAction(returnDevice, device.id)}>
+                        Return
+                      </Button>
+                    );
+                  }
+                  return null;
+                }
+              : null
+          }
         />
       )}
     </div>

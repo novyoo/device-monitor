@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DeviceOptimizer.Api.Data;
@@ -9,19 +11,37 @@ namespace DeviceOptimizer.Api.Controllers
 {
     [ApiController]
     [Route("api/devices")]
+    [Authorize]
     public class DevicesController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly UserManager<AppUser> _userManager;
 
-        public DevicesController(AppDbContext db)
+        public DevicesController(AppDbContext db, UserManager<AppUser> userManager)
         {
             _db = db;
+            _userManager = userManager;
+        }
+
+        private async Task<(AppUser User, bool IsAdmin)> GetCurrentUserAsync()
+        {
+            var user = (await _userManager.GetUserAsync(User))!;
+            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+            return (user, isAdmin);
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetAllDevices()
         {
-            var devices = await _db.Devices.Include(d => d.Tenant).ToListAsync();
+            var (currentUser, isAdmin) = await GetCurrentUserAsync();
+
+            var query = _db.Devices.Include(d => d.Tenant).AsQueryable();
+            if (!isAdmin)
+            {
+                query = query.Where(d => d.TenantId == currentUser.TenantId);
+            }
+
+            var devices = await query.ToListAsync();
             var dtos = devices.Select(MapToDeviceDto).ToList();
             return Ok(dtos);
         }
@@ -29,10 +49,18 @@ namespace DeviceOptimizer.Api.Controllers
         [HttpGet("returns")]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetReturnedDevices()
         {
-            var devices = await _db.Devices
+            var (currentUser, isAdmin) = await GetCurrentUserAsync();
+
+            var query = _db.Devices
                 .Include(d => d.Tenant)
                 .Where(d => d.Status == DeviceStatus.Returned)
-                .ToListAsync();
+                .AsQueryable();
+            if (!isAdmin)
+            {
+                query = query.Where(d => d.TenantId == currentUser.TenantId);
+            }
+
+            var devices = await query.ToListAsync();
 
             var deviceIds = devices.Select(d => d.Id).ToList();
             var lifetimeHoursByDevice = await _db.CheckIns
@@ -86,6 +114,12 @@ namespace DeviceOptimizer.Api.Controllers
         {
             var device = await _db.Devices.Include(d => d.Tenant).FirstOrDefaultAsync(d => d.Id == id);
             if (device == null) return NotFound();
+
+            var (currentUser, isAdmin) = await GetCurrentUserAsync();
+            if (!isAdmin && device.TenantId != currentUser.TenantId)
+            {
+                return Forbid();
+            }
 
             var recentCheckIns = await _db.CheckIns
                 .Where(c => c.DeviceId == id)
@@ -181,6 +215,7 @@ namespace DeviceOptimizer.Api.Controllers
         }
 
         [HttpPost("{id}/rent")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RentDevice(int id)
         {
             var device = await _db.Devices.FindAsync(id);
@@ -194,6 +229,7 @@ namespace DeviceOptimizer.Api.Controllers
         }
 
         [HttpPost("{id}/return")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ReturnDevice(int id)
         {
             var device = await _db.Devices.FindAsync(id);
@@ -208,6 +244,7 @@ namespace DeviceOptimizer.Api.Controllers
         }
 
         [HttpPost("{id}/restock")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RestockDevice(int id)
         {
             var device = await _db.Devices.FindAsync(id);
@@ -220,7 +257,22 @@ namespace DeviceOptimizer.Api.Controllers
             return Ok();
         }
 
+        [HttpPost("{id}/resell")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ResellDevice(int id)
+        {
+            var device = await _db.Devices.FindAsync(id);
+            if (device == null) return NotFound();
+            if (device.Status != DeviceStatus.Returned)
+                return BadRequest($"Device is {device.Status}, not Returned. Cannot send it for resale.");
+
+            device.Status = DeviceStatus.Resale;
+            await _db.SaveChangesAsync();
+            return Ok();
+        }
+
         [HttpPost("{id}/repair")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SendToRepair(int id)
         {
             var device = await _db.Devices.FindAsync(id);
@@ -235,6 +287,7 @@ namespace DeviceOptimizer.Api.Controllers
         }
 
         [HttpPost("{id}/retire")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RetireDevice(int id)
         {
             var device = await _db.Devices.FindAsync(id);
@@ -250,14 +303,21 @@ namespace DeviceOptimizer.Api.Controllers
         [HttpGet("returns/stats")]
         public async Task<ActionResult<ReturnStatsDto>> GetReturnStats()
         {
+            var (currentUser, isAdmin) = await GetCurrentUserAsync();
             var now = DateTime.UtcNow;
 
-            var returnedThisMonth = await _db.Devices.CountAsync(d =>
+            var query = _db.Devices.AsQueryable();
+            if (!isAdmin)
+            {
+                query = query.Where(d => d.TenantId == currentUser.TenantId);
+            }
+
+            var returnedThisMonth = await query.CountAsync(d =>
                 d.ReturnedAt != null &&
                 d.ReturnedAt.Value.Month == now.Month &&
                 d.ReturnedAt.Value.Year == now.Year);
 
-            var awaitingDecision = await _db.Devices.CountAsync(d => d.Status == DeviceStatus.Returned);
+            var awaitingDecision = await query.CountAsync(d => d.Status == DeviceStatus.Returned);
 
             return Ok(new ReturnStatsDto
             {
