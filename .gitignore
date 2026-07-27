@@ -2,6 +2,9 @@
 backend/**/bin/
 backend/**/obj/
 
+# Frontend build copied here only at deploy time, never committed
+backend/**/wwwroot/
+
 # Local dev database
 backend/**/*.db
 backend/**/*.db-shm
@@ -13,6 +16,9 @@ backend/**/appsettings.Development.json
 # Frontend
 frontend/**/node_modules/
 frontend/**/dist/
+
+# Local HTTPS dev certificate (exported from dotnet dev-certs, machine-specific)
+frontend/**/certs/
 
 # This handoff file contains job-application strategy — keep it local only
 HANDOFF.md

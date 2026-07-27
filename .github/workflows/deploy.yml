@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AZURE_WEBAPP_NAME: pulsle
+  AZURE_WEBAPP_URL: https://pulsle-c8dfeedphahmbxdg.westus3-01.azurewebsites.net
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22.x'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build frontend
+        working-directory: frontend/device-optimizer-ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy frontend build into backend wwwroot
+        run: |
+          mkdir -p backend/DeviceOptimizer.Api/wwwroot
+          cp -r frontend/device-optimizer-ui/dist/* backend/DeviceOptimizer.Api/wwwroot/
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish backend
+        run: dotnet publish backend/DeviceOptimizer.Api -c Release -o publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-package
+          path: publish
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-package
+          path: publish
+
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
+
+      - name: Smoke test health endpoint
+        run: |
+          sleep 30
+          curl -f ${{ env.AZURE_WEBAPP_URL }}/health
