@@ -1,8 +1,14 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body, #root {
+  min-height: 100vh;
 }
 
 body {
   margin: 0;
+  zoom: 1.15;
+  background-color: #ffffff;
 }

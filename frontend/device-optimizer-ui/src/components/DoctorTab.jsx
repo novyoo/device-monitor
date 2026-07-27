@@ -36,7 +36,7 @@ export default function DoctorTab() {
 
       {!loading && !error && (
         <>
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
             <Card style={{ padding: '12px', flex: 1 }}>
               <p style={{ margin: 0, fontWeight: 600 }}>🟢 Healthy</p>
               <p style={{ margin: '4px 0', fontSize: '24px' }}>{healthyCount}</p>
