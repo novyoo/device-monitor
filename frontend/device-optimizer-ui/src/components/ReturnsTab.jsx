@@ -5,11 +5,12 @@ import {
   getReturnStats,
   restockDevice,
   repairDevice,
+  resellDevice,
   retireDevice,
 } from '../api/deviceApi';
 import DeviceTable from './DeviceTable';
 
-export default function ReturnsTab() {
+export default function ReturnsTab({ isAdmin }) {
   const [devices, setDevices] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,8 +47,10 @@ export default function ReturnsTab() {
     <div>
       <h2>Returns Inbox</h2>
       <p>
-        Devices returned by customers, awaiting a decision. The highlighted button is the
-        system's recommendation — click it to accept, or click a different one to override.
+        Devices returned by customers, awaiting a decision.
+        {isAdmin
+          ? " The highlighted button is the system's recommendation — click it to accept, or click a different one to override."
+          : ' YRL staff decide what happens next; this view shows their recommendation for each device.'}
       </p>
 
       {stats && (
@@ -66,31 +69,42 @@ export default function ReturnsTab() {
           devices={devices}
           emptyMessage="No devices are currently awaiting a decision."
           showRecommendation
-          renderActions={(device) => (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button
-                size="small"
-                appearance={actionAppearance(device, 'RentAgain')}
-                onClick={() => handleAction(restockDevice, device.id)}
-              >
-                Rent Again
-              </Button>
-              <Button
-                size="small"
-                appearance={actionAppearance(device, 'Repair')}
-                onClick={() => handleAction(repairDevice, device.id)}
-              >
-                Repair First
-              </Button>
-              <Button
-                size="small"
-                appearance={actionAppearance(device, 'Retire')}
-                onClick={() => handleAction(retireDevice, device.id)}
-              >
-                Retire
-              </Button>
-            </div>
-          )}
+          renderActions={
+            isAdmin
+              ? (device) => (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                      size="small"
+                      appearance={actionAppearance(device, 'RentAgain')}
+                      onClick={() => handleAction(restockDevice, device.id)}
+                    >
+                      Rent Again
+                    </Button>
+                    <Button
+                      size="small"
+                      appearance={actionAppearance(device, 'Repair')}
+                      onClick={() => handleAction(repairDevice, device.id)}
+                    >
+                      Repair First
+                    </Button>
+                    <Button
+                      size="small"
+                      appearance={actionAppearance(device, 'Resale')}
+                      onClick={() => handleAction(resellDevice, device.id)}
+                    >
+                      Resell
+                    </Button>
+                    <Button
+                      size="small"
+                      appearance={actionAppearance(device, 'Retire')}
+                      onClick={() => handleAction(retireDevice, device.id)}
+                    >
+                      Retire
+                    </Button>
+                  </div>
+                )
+              : null
+          }
         />
       )}
     </div>
