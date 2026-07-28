@@ -20,6 +20,9 @@ frontend/**/dist/
 # Local HTTPS dev certificate (exported from dotnet dev-certs, machine-specific)
 frontend/**/certs/
 
+# Real per-friend agent configs — hold live ApiKeys, never committed
+backend/DeviceOptimizer.Agent/friend-configs/
+
 # This handoff file contains job-application strategy — keep it local only
 HANDOFF.md
 

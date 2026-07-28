@@ -1,3 +1,5 @@
+using DeviceOptimizer.Api.Models;
+
 namespace DeviceOptimizer.Api.Services
 {
     public class HealthScoreResult
@@ -84,6 +86,21 @@ namespace DeviceOptimizer.Api.Services
                 Reasons = reasons,
                 Flags = flags
             };
+        }
+
+        public static HealthScoreResult? CalculateForDevice(Device d)
+        {
+            if (d.LastCheckInAt == null) return null;
+
+            return Calculate(
+                d.Avg3BatteryHealthPercent ?? d.LastBatteryHealthPercent!.Value,
+                d.Avg3DiskWearPercent ?? d.LastDiskWearPercent!.Value,
+                d.Avg3DiskErrorCount ?? d.LastDiskErrorCount!.Value,
+                d.Avg3SuddenShutdownCount ?? d.LastSuddenShutdownCount!.Value,
+                d.Avg3CrashCount ?? d.LastCrashCount!.Value,
+                d.Avg3TemperatureCelsius ?? d.LastTemperatureCelsius!.Value,
+                d.LastRamUsagePercent!.Value,
+                d.LastDaysSinceOsUpdate!.Value);
         }
 
         public static string GetBand(int score)

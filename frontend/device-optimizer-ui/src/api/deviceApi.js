@@ -24,6 +24,14 @@ export function getDeviceDetail(id) {
   return getJson(`/devices/${id}/detail`);
 }
 
+export function getAlerts() {
+  return getJson('/alerts');
+}
+
+export function dismissAlert(id) {
+  return postAction(`/alerts/${id}/dismiss`);
+}
+
 export function getGreenReport() {
   return getJson('/green/report');
 }

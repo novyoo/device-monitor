@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using DeviceOptimizer.Api.DTOs;
 using DeviceOptimizer.Api.Models;
+using DeviceOptimizer.Api.Services;
 
 namespace DeviceOptimizer.Api.Data
 {
@@ -10,6 +11,8 @@ namespace DeviceOptimizer.Api.Data
         {
             var device = await db.Devices.FirstOrDefaultAsync(d => d.ApiKey == dto.ApiKey);
             if (device == null) return null;
+
+            var previousBand = HealthScoreCalculator.CalculateForDevice(device)?.Band;
 
             var checkIn = new CheckIn
             {
@@ -67,6 +70,17 @@ namespace DeviceOptimizer.Api.Data
             device.Avg3SuddenShutdownCount = (int)Math.Round(recentShutdowns.Average());
             device.Avg3CrashCount = (int)Math.Round(recentCrashes.Average());
             device.Avg3TemperatureCelsius = Math.Round(recentTemperature.Average(), 1);
+
+            var newBand = HealthScoreCalculator.CalculateForDevice(device)?.Band;
+            if (newBand == "ActNow" && previousBand != "ActNow")
+            {
+                db.Alerts.Add(new Alert
+                {
+                    DeviceId = device.Id,
+                    Message = $"{device.Model} ({device.SerialNumber}) dropped into Act Now.",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
 
             await db.SaveChangesAsync();
             return device;
