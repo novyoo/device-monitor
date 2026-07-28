@@ -14,7 +14,8 @@ namespace DeviceOptimizer.Api.Models
     {
         Boring,
         Aging,
-        TroubleProne
+        TroubleProne,
+        RealDevice
     }
 
     public class Device
@@ -50,6 +51,13 @@ namespace DeviceOptimizer.Api.Models
         public double? LastActiveUseHours { get; set; }
         public int? LastDaysSinceOsUpdate { get; set; }
         public DateTime? LastCheckInAt { get; set; }
+
+        public int? Avg3BatteryHealthPercent { get; set; }
+        public int? Avg3DiskWearPercent { get; set; }
+        public int? Avg3DiskErrorCount { get; set; }
+        public int? Avg3SuddenShutdownCount { get; set; }
+        public int? Avg3CrashCount { get; set; }
+        public double? Avg3TemperatureCelsius { get; set; }
 
         public List<CheckIn> CheckIns { get; set; } = new();
     }

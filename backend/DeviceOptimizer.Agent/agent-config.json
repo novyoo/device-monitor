@@ -1,0 +1,5 @@
+{
+  "ServerUrl": "https://localhost:7080",
+  "ApiKey": "PASTE-YOUR-DEVICE-API-KEY-HERE",
+  "IntervalMinutes": 60
+}

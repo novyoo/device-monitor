@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FluentProvider, webLightTheme, TabList, Tab, Button, Spinner, Card } from '@fluentui/react-components';
 import Dashboard from './components/Dashboard';
 import ReturnsTab from './components/ReturnsTab';
 import DoctorTab from './components/DoctorTab';
 import GreenTab from './components/GreenTab';
 import LoginPage from './components/LoginPage';
-import { getCurrentUser, logout } from './api/deviceApi';
+import { getCurrentUser, getDevices, logout } from './api/deviceApi';
 
 function PrivacyPanel() {
   return (
@@ -23,13 +23,60 @@ function PrivacyPanel() {
   );
 }
 
+function RedAlertBanner({ alerts, onDismiss }) {
+  if (alerts.length === 0) return null;
+
+  return (
+    <Card style={{ padding: '12px', marginBottom: '20px', background: '#fdf3f4' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+        <div>
+          <p style={{ margin: 0, fontWeight: 600 }}>🔴 {alerts.length} device(s) just dropped into Act Now</p>
+          <p style={{ margin: '4px 0 0' }}>
+            {alerts.map((d) => `${d.model} (${d.serialNumber})`).join(', ')}
+          </p>
+        </div>
+        <Button size="small" onClick={onDismiss}>Dismiss</Button>
+      </div>
+    </Card>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(undefined);
   const [selectedTab, setSelectedTab] = useState('fleet');
+  const [redAlerts, setRedAlerts] = useState([]);
+  const previousActNowIds = useRef(null);
 
   useEffect(() => {
     getCurrentUser().then(setCurrentUser);
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      previousActNowIds.current = null;
+      setRedAlerts([]);
+      return undefined;
+    }
+
+    function checkForNewRedDevices() {
+      getDevices().then((devices) => {
+        const actNowDevices = devices.filter((d) => d.healthBand === 'ActNow');
+
+        if (previousActNowIds.current !== null) {
+          const newlyRed = actNowDevices.filter((d) => !previousActNowIds.current.has(d.id));
+          if (newlyRed.length > 0) {
+            setRedAlerts((existing) => [...existing, ...newlyRed]);
+          }
+        }
+
+        previousActNowIds.current = new Set(actNowDevices.map((d) => d.id));
+      });
+    }
+
+    checkForNewRedDevices();
+    const interval = setInterval(checkForNewRedDevices, 10000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   async function handleLogout() {
     await logout();
@@ -71,6 +118,8 @@ export default function App() {
         </div>
 
         <PrivacyPanel />
+
+        <RedAlertBanner alerts={redAlerts} onDismiss={() => setRedAlerts([])} />
 
         <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value)}>
           <Tab value="fleet">Fleet</Tab>

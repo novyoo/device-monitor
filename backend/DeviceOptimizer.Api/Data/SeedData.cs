@@ -17,6 +17,7 @@ namespace DeviceOptimizer.Api.Data
         public static void Initialize(AppDbContext context)
         {
             SeedModelFootprints(context);
+            SeedRealDeviceLabTenant(context);
 
             if (context.Devices.Any()) return;
 
@@ -68,6 +69,14 @@ namespace DeviceOptimizer.Api.Data
             }
 
             context.Devices.AddRange(devices);
+            context.SaveChanges();
+        }
+
+        private static void SeedRealDeviceLabTenant(AppDbContext context)
+        {
+            if (context.Tenants.Any(t => t.Name == "Real Device Lab")) return;
+
+            context.Tenants.Add(new Tenant { Name = "Real Device Lab" });
             context.SaveChanges();
         }
 
