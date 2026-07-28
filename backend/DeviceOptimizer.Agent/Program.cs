@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using DeviceOptimizer.Agent;
+using Microsoft.Win32;
 
 var configPath = Path.Combine(AppContext.BaseDirectory, "agent-config.json");
 if (!File.Exists(configPath))
@@ -18,6 +19,8 @@ if (config == null || string.IsNullOrWhiteSpace(config.ServerUrl) || string.IsNu
     Console.WriteLine("Open agent-config.json and fill in ServerUrl and the ApiKey you were given.");
     return;
 }
+
+AddToWindowsStartup();
 
 using var http = new HttpClient();
 
@@ -46,4 +49,21 @@ while (true)
     }
 
     await Task.Delay(TimeSpan.FromMinutes(config.IntervalMinutes));
+}
+
+static void AddToWindowsStartup()
+{
+    try
+    {
+        var exePath = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exePath)) return;
+
+        using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+        key?.SetValue("FleetPulseAgent", $"\"{exePath}\"");
+        Console.WriteLine("Set to start automatically next time you log in to Windows.");
+    }
+    catch
+    {
+        Console.WriteLine("Could not set up auto-start - you'll need to open this again after a restart.");
+    }
 }

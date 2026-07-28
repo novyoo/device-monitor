@@ -156,23 +156,12 @@ namespace DeviceOptimizer.Api.Controllers
                 detail.Flags = currentResult.Flags;
             }
 
+            detail.TrendMessage = TrendPredictor.Predict(detail.History)?.Message;
+
             return Ok(detail);
         }
 
-        private static HealthScoreResult? GetHealthResult(Device d)
-        {
-            if (d.LastCheckInAt == null) return null;
-
-            return HealthScoreCalculator.Calculate(
-                d.Avg3BatteryHealthPercent ?? d.LastBatteryHealthPercent!.Value,
-                d.Avg3DiskWearPercent ?? d.LastDiskWearPercent!.Value,
-                d.Avg3DiskErrorCount ?? d.LastDiskErrorCount!.Value,
-                d.Avg3SuddenShutdownCount ?? d.LastSuddenShutdownCount!.Value,
-                d.Avg3CrashCount ?? d.LastCrashCount!.Value,
-                d.Avg3TemperatureCelsius ?? d.LastTemperatureCelsius!.Value,
-                d.LastRamUsagePercent!.Value,
-                d.LastDaysSinceOsUpdate!.Value);
-        }
+        private static HealthScoreResult? GetHealthResult(Device d) => HealthScoreCalculator.CalculateForDevice(d);
 
         private static DeviceDto MapToDeviceDto(Device d)
         {

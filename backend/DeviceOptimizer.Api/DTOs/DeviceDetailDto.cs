@@ -19,6 +19,7 @@ namespace DeviceOptimizer.Api.DTOs
         public string? HealthBand { get; set; }
         public List<string> Reasons { get; set; } = new();
         public List<string> Flags { get; set; } = new();
+        public string? TrendMessage { get; set; }
 
         public int? BatteryHealthPercent { get; set; }
         public int? DiskWearPercent { get; set; }

@@ -126,6 +126,13 @@ export default function HealthDetailDialog({ deviceId, onClose }) {
                   </>
                 )}
 
+                {detail.trendMessage && (
+                  <>
+                    <h4>Trend</h4>
+                    <p>📉 {detail.trendMessage}</p>
+                  </>
+                )}
+
                 <h4>Health history</h4>
                 <HealthHistoryBars history={detail.history} />
               </div>
