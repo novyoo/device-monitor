@@ -73,22 +73,9 @@ namespace DeviceOptimizer.Api.Controllers
             {
                 var dto = MapToDeviceDto(d);
 
-                var healthReasons = new List<string>();
-                var healthFlags = new List<string>();
-                if (d.LastCheckInAt != null)
-                {
-                    var healthResult = HealthScoreCalculator.Calculate(
-                        d.LastBatteryHealthPercent!.Value,
-                        d.LastDiskWearPercent!.Value,
-                        d.LastDiskErrorCount!.Value,
-                        d.LastSuddenShutdownCount!.Value,
-                        d.LastCrashCount!.Value,
-                        d.LastTemperatureCelsius!.Value,
-                        d.LastRamUsagePercent!.Value,
-                        d.LastDaysSinceOsUpdate!.Value);
-                    healthReasons = healthResult.Reasons;
-                    healthFlags = healthResult.Flags;
-                }
+                var healthResult = GetHealthResult(d);
+                var healthReasons = healthResult?.Reasons ?? new List<string>();
+                var healthFlags = healthResult?.Flags ?? new List<string>();
 
                 var lifetimeHours = lifetimeHoursByDevice.TryGetValue(d.Id, out var hours) ? hours : 0;
 
@@ -160,25 +147,31 @@ namespace DeviceOptimizer.Api.Controllers
                 }).ToList()
             };
 
-            if (device.LastCheckInAt != null)
+            var currentResult = GetHealthResult(device);
+            if (currentResult != null)
             {
-                var result = HealthScoreCalculator.Calculate(
-                    device.LastBatteryHealthPercent!.Value,
-                    device.LastDiskWearPercent!.Value,
-                    device.LastDiskErrorCount!.Value,
-                    device.LastSuddenShutdownCount!.Value,
-                    device.LastCrashCount!.Value,
-                    device.LastTemperatureCelsius!.Value,
-                    device.LastRamUsagePercent!.Value,
-                    device.LastDaysSinceOsUpdate!.Value);
-
-                detail.HealthScore = result.Score;
-                detail.HealthBand = result.Band;
-                detail.Reasons = result.Reasons;
-                detail.Flags = result.Flags;
+                detail.HealthScore = currentResult.Score;
+                detail.HealthBand = currentResult.Band;
+                detail.Reasons = currentResult.Reasons;
+                detail.Flags = currentResult.Flags;
             }
 
             return Ok(detail);
+        }
+
+        private static HealthScoreResult? GetHealthResult(Device d)
+        {
+            if (d.LastCheckInAt == null) return null;
+
+            return HealthScoreCalculator.Calculate(
+                d.Avg3BatteryHealthPercent ?? d.LastBatteryHealthPercent!.Value,
+                d.Avg3DiskWearPercent ?? d.LastDiskWearPercent!.Value,
+                d.Avg3DiskErrorCount ?? d.LastDiskErrorCount!.Value,
+                d.Avg3SuddenShutdownCount ?? d.LastSuddenShutdownCount!.Value,
+                d.Avg3CrashCount ?? d.LastCrashCount!.Value,
+                d.Avg3TemperatureCelsius ?? d.LastTemperatureCelsius!.Value,
+                d.LastRamUsagePercent!.Value,
+                d.LastDaysSinceOsUpdate!.Value);
         }
 
         private static DeviceDto MapToDeviceDto(Device d)
@@ -195,23 +188,73 @@ namespace DeviceOptimizer.Api.Controllers
                 ReturnedAt = d.ReturnedAt
             };
 
-            if (d.LastCheckInAt != null)
+            var result = GetHealthResult(d);
+            if (result != null)
             {
-                var result = HealthScoreCalculator.Calculate(
-                    d.LastBatteryHealthPercent!.Value,
-                    d.LastDiskWearPercent!.Value,
-                    d.LastDiskErrorCount!.Value,
-                    d.LastSuddenShutdownCount!.Value,
-                    d.LastCrashCount!.Value,
-                    d.LastTemperatureCelsius!.Value,
-                    d.LastRamUsagePercent!.Value,
-                    d.LastDaysSinceOsUpdate!.Value);
-
                 dto.HealthScore = result.Score;
                 dto.HealthBand = result.Band;
             }
 
             return dto;
+        }
+
+        private async Task RecordDecisionAsync(Device device, string actualAction)
+        {
+            var healthResult = GetHealthResult(device);
+            if (healthResult == null) return;
+
+            var lifetimeHours = await _db.CheckIns
+                .Where(c => c.DeviceId == device.Id)
+                .SumAsync(c => c.ActiveUseHours);
+
+            var recommendation = RecommendationEngine.Recommend(
+                healthResult.Score,
+                healthResult.Band,
+                healthResult.Reasons,
+                healthResult.Flags,
+                device.PurchaseDate,
+                device.RepairCount,
+                lifetimeHours);
+
+            _db.DecisionRecords.Add(new DecisionRecord
+            {
+                DeviceId = device.Id,
+                RecommendedAction = recommendation.Action,
+                ActualAction = actualAction,
+                DecidedAt = DateTime.UtcNow
+            });
+        }
+
+        [HttpPost("register")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<RegisteredDeviceDto>> RegisterRealDevice(RegisterDeviceDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Model) || string.IsNullOrWhiteSpace(dto.SerialNumber))
+                return BadRequest("Model and serial number are both required.");
+
+            var model = dto.Model.Trim();
+            var serialNumber = dto.SerialNumber.Trim();
+
+            var tenant = await _db.Tenants.FindAsync(dto.TenantId);
+            if (tenant == null) return BadRequest("Unknown tenant.");
+
+            var serialTaken = await _db.Devices.AnyAsync(d => d.SerialNumber == serialNumber);
+            if (serialTaken) return BadRequest("A device with that serial number already exists.");
+
+            var device = new Device
+            {
+                TenantId = tenant.Id,
+                Model = model,
+                SerialNumber = serialNumber,
+                PurchaseDate = dto.PurchaseDate ?? DateTime.UtcNow,
+                Status = DeviceStatus.Rented,
+                Personality = DevicePersonality.RealDevice
+            };
+
+            _db.Devices.Add(device);
+            await _db.SaveChangesAsync();
+
+            return Ok(new RegisteredDeviceDto { Id = device.Id, ApiKey = device.ApiKey });
         }
 
         [HttpPost("{id}/rent")]
@@ -252,6 +295,7 @@ namespace DeviceOptimizer.Api.Controllers
             if (device.Status != DeviceStatus.Returned)
                 return BadRequest($"Device is {device.Status}, not Returned. Cannot restock it.");
 
+            await RecordDecisionAsync(device, "RentAgain");
             device.Status = DeviceStatus.InStock;
             await _db.SaveChangesAsync();
             return Ok();
@@ -266,6 +310,7 @@ namespace DeviceOptimizer.Api.Controllers
             if (device.Status != DeviceStatus.Returned)
                 return BadRequest($"Device is {device.Status}, not Returned. Cannot send it for resale.");
 
+            await RecordDecisionAsync(device, "Resale");
             device.Status = DeviceStatus.Resale;
             await _db.SaveChangesAsync();
             return Ok();
@@ -280,6 +325,7 @@ namespace DeviceOptimizer.Api.Controllers
             if (device.Status != DeviceStatus.Returned)
                 return BadRequest($"Device is {device.Status}, not Returned. Cannot send it to repair.");
 
+            await RecordDecisionAsync(device, "Repair");
             device.Status = DeviceStatus.InRepair;
             device.RepairCount += 1;
             await _db.SaveChangesAsync();
@@ -295,6 +341,7 @@ namespace DeviceOptimizer.Api.Controllers
             if (device.Status != DeviceStatus.Returned)
                 return BadRequest($"Device is {device.Status}, not Returned. Cannot retire it.");
 
+            await RecordDecisionAsync(device, "Retire");
             device.Status = DeviceStatus.Retired;
             await _db.SaveChangesAsync();
             return Ok();
@@ -319,11 +366,26 @@ namespace DeviceOptimizer.Api.Controllers
 
             var awaitingDecision = await query.CountAsync(d => d.Status == DeviceStatus.Returned);
 
+            var decisionQuery = _db.DecisionRecords.Include(r => r.Device).AsQueryable();
+            if (!isAdmin)
+            {
+                decisionQuery = decisionQuery.Where(r => r.Device!.TenantId == currentUser.TenantId);
+            }
+
+            var totalDecisions = await decisionQuery.CountAsync();
+            int? agreementPercent = null;
+            if (totalDecisions > 0)
+            {
+                var agreedDecisions = await decisionQuery.CountAsync(r => r.RecommendedAction == r.ActualAction);
+                agreementPercent = (int)Math.Round(100.0 * agreedDecisions / totalDecisions);
+            }
+
             return Ok(new ReturnStatsDto
             {
                 Month = now.ToString("MMMM yyyy"),
                 ReturnedThisMonth = returnedThisMonth,
-                AwaitingDecision = awaitingDecision
+                AwaitingDecision = awaitingDecision,
+                AgreementPercent = agreementPercent
             });
         }
     }

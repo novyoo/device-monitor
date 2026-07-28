@@ -12,6 +12,7 @@ namespace DeviceOptimizer.Api.Data
         public DbSet<Device> Devices => Set<Device>();
         public DbSet<CheckIn> CheckIns => Set<CheckIn>();
         public DbSet<ModelFootprint> ModelFootprints => Set<ModelFootprint>();
+        public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

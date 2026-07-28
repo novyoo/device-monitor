@@ -44,7 +44,7 @@ namespace DeviceOptimizer.Api.BackgroundServices
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                 var devices = await db.Devices
-                    .Where(d => d.Status != DeviceStatus.Retired)
+                    .Where(d => d.Status != DeviceStatus.Retired && d.Personality != DevicePersonality.RealDevice)
                     .ToListAsync();
 
                 foreach (var device in devices)

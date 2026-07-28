@@ -48,15 +48,22 @@ namespace DeviceOptimizer.Api.Services
                 return new RecommendationResult { Action = "Resale", Reasons = reasons };
             }
 
-            if (ageYears >= 3.5)
+            if (ageYears >= 3.5 && healthBand != "Healthy")
             {
-                reasons.Add($"At {ageDisplay} years old, this device is well past the typical 3-year replacement cycle.");
+                reasons.Add($"At {ageDisplay} years old and health has dropped to {bandDisplay} ({score}%) — well past the typical 3-year cycle and not worth further investment.");
                 return new RecommendationResult { Action = "Retire", Reasons = reasons };
             }
 
             if (healthBand == "Healthy")
             {
-                reasons.Add($"Health score is {score}% ({bandDisplay}) — in good shape to rent out again.");
+                if (ageYears >= 3.5)
+                {
+                    reasons.Add($"At {ageDisplay} years old it's past the typical 3-year cycle, but health is still strong at {score}% — worth renting again, just keep a closer eye on it.");
+                }
+                else
+                {
+                    reasons.Add($"Health score is {score}% ({bandDisplay}) — in good shape to rent out again.");
+                }
                 return new RecommendationResult { Action = "RentAgain", Reasons = reasons };
             }
 

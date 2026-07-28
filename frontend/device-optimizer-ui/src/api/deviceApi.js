@@ -79,6 +79,10 @@ async function postJson(path, body) {
   return data;
 }
 
+export function registerDevice(model, serialNumber, tenantId, purchaseDate) {
+  return postJson('/devices/register', { model, serialNumber, tenantId, purchaseDate });
+}
+
 export function getTenants() {
   return getJson('/auth/tenants');
 }

@@ -7,13 +7,14 @@ import {
   TableBody,
   TableCell,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import HealthDetailDialog from './HealthDetailDialog';
 
 const bandColor = { Healthy: 'success', Watch: 'warning', ActNow: 'danger' };
 const bandEmoji = { Healthy: '🟢', Watch: '🟡', ActNow: '🔴' };
 
-function HealthBadge({ score, band }) {
+export function HealthBadge({ score, band }) {
   if (score === null || score === undefined) {
     return <Badge appearance="tint">No data yet</Badge>;
   }
@@ -33,14 +34,25 @@ const recommendationLabel = {
 const recommendationEmoji = { RentAgain: '✅', Repair: '🔧', Resale: '🏷️', Retire: '♻️' };
 const recommendationColor = { RentAgain: 'success', Repair: 'warning', Resale: 'informative', Retire: 'danger' };
 
-function RecommendationBadge({ action, reasons }) {
+export function RecommendationBadge({ action, reasons }) {
   if (!action) {
     return <Badge appearance="tint">—</Badge>;
   }
-  return (
-    <Badge appearance="tint" color={recommendationColor[action] ?? 'subtle'} title={reasons?.join(' ')}>
+
+  const badge = (
+    <Badge appearance="tint" color={recommendationColor[action] ?? 'subtle'}>
       {recommendationEmoji[action] ?? ''} {recommendationLabel[action] ?? action}
     </Badge>
+  );
+
+  if (!reasons || reasons.length === 0) {
+    return badge;
+  }
+
+  return (
+    <Tooltip content={reasons.join(' ')} relationship="description" withArrow>
+      {badge}
+    </Tooltip>
   );
 }
 
